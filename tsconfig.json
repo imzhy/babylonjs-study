@@ -35,7 +35,11 @@
       "@view/*": [
         "src/view/*"
       ]
-    }
+    },
+    "types": [
+      "babylonjs",
+      "babylonjs-loaders"
+    ]
   },
   "include": [
     "src/**/*.ts",

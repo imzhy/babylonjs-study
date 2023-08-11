@@ -12,7 +12,8 @@
     "vue": "3.3.4",
     "pinia": "2.1.6",
     "vue-router": "4.2.4",
-    "babylonjs": "6.16.0"
+    "babylonjs": "6.16.0",
+    "babylonjs-loaders": "6.16.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "4.2.3",
