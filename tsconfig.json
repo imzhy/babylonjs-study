@@ -18,7 +18,7 @@
     "jsx": "preserve",
     /* Linting */
     "strict": true,
-    "noUnusedLocals": true,
+    "noUnusedLocals": false,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
@@ -37,8 +37,10 @@
       ]
     },
     "types": [
-      "babylonjs",
-      "babylonjs-loaders"
+      "@babylonjs/core",
+      "@babylonjs/loaders",
+      "@babylonjs/materials",
+      "earcut"
     ]
   },
   "include": [

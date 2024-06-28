@@ -12,13 +12,17 @@
     "vue": "3.3.4",
     "pinia": "2.1.6",
     "vue-router": "4.2.4",
-    "babylonjs": "6.16.0",
-    "babylonjs-loaders": "6.16.0"
+    "@babylonjs/core": "7.12.0",
+    "@babylonjs/loaders": "7.12.0",
+    "@babylonjs/materials": "7.12.0",
+    "earcut": "2.2.4"
   },
   "devDependencies": {
+    "@babylonjs/inspector": "7.12.0",
     "@vitejs/plugin-vue": "4.2.3",
     "@types/node": "20.4.9",
     "@vitejs/plugin-vue-jsx": "3.0.1",
+    "@types/earcut": "2.1.4",
     "less": "4.2.0",
     "postcss": "8.4.27",
     "postcss-preset-env": "9.1.1",
