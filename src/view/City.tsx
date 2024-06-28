@@ -19,6 +19,7 @@ import {Mesh} from "@babylonjs/core/Meshes/mesh";
 import {Animation} from "@babylonjs/core/Animations/animation";
 
 import "@babylonjs/loaders/glTF";
+import "@babylonjs/loaders/OBJ/objFileLoader";
 import "@babylonjs/core/Loading/Plugins/babylonFileLoader";
 // import "@babylonjs/loaders/legacy";
 // import "@babylonjs/core/Debug/debugLayer";
@@ -269,14 +270,6 @@ export default defineComponent({
             // camera.setTarget(car.position);
 
 
-            SceneLoader.ImportMeshAsync("", "src/assets/zaojia/", "zaojia.glb", scene, (progress: any) => {
-                shuProgress.value = (progress.loaded / progress.total * 100).toFixed(2);
-            }).then((meshes: any) => {
-                meshes.meshes[0].scaling = new Vector3(0.05, 0.05, 0.05);
-                meshes.meshes[0].position = new Vector3(9, 0, -3);
-            });
-
-
             SceneLoader.ImportMeshAsync("", "src/assets/jue/", "jue.glb", scene, (progress: any) => {
                 jueProgress.value = (progress.loaded / progress.total * 100).toFixed(2);
             }).then((jueMeshes: any) => {
@@ -288,7 +281,15 @@ export default defineComponent({
                 himProgress.value = (progress.loaded / progress.total * 100).toFixed(2);
             }).then((meshes: any) => {
                 meshes.meshes[0].scaling = new Vector3(0.01, 0.01, 0.01);
-                meshes.meshes[0].position = new Vector3(-1.8, 0, -1.8);
+                meshes.meshes[0].position = new Vector3(2, 0, -1.8);
+
+                scene.beginAnimation(meshes.skeletons[0], 0, 100, true);
+
+                meshes.meshes[0].movePOV(2, 2, 2);
+
+                scene.onBeforeRenderObservable.add(() => {
+                    console.log(123);
+                });
             });
 
             return scene;
@@ -322,7 +323,7 @@ export default defineComponent({
             }, [
                 <div>加载进度</div>,
                 <div>草：{jueProgress.value}%</div>,
-                <div>树：{shuProgress.value}%</div>,
+                <div>树：{shuProgress.value}%（暂无）</div>,
                 <div>树：{himProgress.value}%</div>
             ])
         }
