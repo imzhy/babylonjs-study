@@ -43,7 +43,7 @@ export default defineComponent({
                 maxHeight: 10
             }, scene);
             const groundMaterial = new StandardMaterial("groundMaterial", scene);
-            groundMaterial.diffuseTexture = new Texture("https://assets.babylonjs.com/environments/valleygrass.png", scene);
+            groundMaterial.diffuseTexture = new Texture("/src/assets/valleygrass.png", scene);
             ground.material = groundMaterial;
         }
 
@@ -112,7 +112,7 @@ export default defineComponent({
             }, scene, earCut);
 
             const carMat = new StandardMaterial("carMat");
-            carMat.diffuseTexture = new Texture("https://assets.babylonjs.com/environments/car.png");
+            carMat.diffuseTexture = new Texture("/src/assets/car.png");
             car.material = carMat;
 
             const carAnimation = new Animation("carAnimation", "position.z", 60,
@@ -147,7 +147,7 @@ export default defineComponent({
                 ]
             });
             const wheelMat = new StandardMaterial("wheelMat");
-            wheelMat.diffuseTexture = new Texture("https://assets.babylonjs.com/environments/wheel.png");
+            wheelMat.diffuseTexture = new Texture("/src/assets/wheel.png");
             wheelRB.material = wheelMat;
             wheelRB.setParent(car);
             wheelRB.position = new Vector3(0.1, 0.02, 0);
