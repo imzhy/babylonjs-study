@@ -5,7 +5,7 @@ import {ArcRotateCamera} from "@babylonjs/core/Cameras/arcRotateCamera";
 import {Engine} from "@babylonjs/core/Engines/engine";
 import {Scene} from "@babylonjs/core/scene";
 import {HemisphericLight} from "@babylonjs/core/Lights/hemisphericLight";
-import {Color3, Vector3, Vector4} from "@babylonjs/core/Maths/math";
+import {Axis, Color3, Quaternion, Space, Vector3, Vector4} from "@babylonjs/core/Maths/math";
 import {CreateBox} from "@babylonjs/core/Meshes/Builders/boxBuilder";
 import {CreateGround} from "@babylonjs/core/Meshes/Builders/groundBuilder";
 import {CreateSphere} from "@babylonjs/core/Meshes/Builders/sphereBuilder";
@@ -280,15 +280,47 @@ export default defineComponent({
             SceneLoader.ImportMeshAsync("", "src/assets/Duty/", "dude.babylon", scene, (progress: any) => {
                 himProgress.value = (progress.loaded / progress.total * 100).toFixed(2);
             }).then((meshes: any) => {
-                meshes.meshes[0].scaling = new Vector3(0.01, 0.01, 0.01);
-                meshes.meshes[0].position = new Vector3(2, 0, -1.8);
+                let scaling = 3;
+                let speed = 1;
 
-                scene.beginAnimation(meshes.skeletons[0], 0, 100, true);
+                meshes.meshes[0].scaling = new Vector3(0.01 * scaling, 0.01 * scaling, 0.01 * scaling);
+                meshes.meshes[0].position = new Vector3(2, 0, 0);
 
-                meshes.meshes[0].movePOV(2, 2, 2);
+                meshes.meshes[0].rotate(Axis.Y, 0, Space.LOCAL);
+                let rotation = meshes.meshes[0].rotationQuaternion.clone();
+
+                scene.beginAnimation(meshes.skeletons[0], 0, 100, true, speed);
+
+                const walk = [
+                    {turn: -Math.PI / 2, distance: 6},
+                    {turn: -Math.PI / 2, distance: 2},
+                    {turn: Math.PI / 2, distance: 8},
+                    {turn: -Math.PI / 2, distance: 8},
+                    {turn: -Math.PI / 2, distance: 2},
+                    {turn: -Math.PI / 2, distance: 18},
+                    {turn: -Math.PI / 2, distance: 2},
+                    {turn: Math.PI / 2, distance: 8},
+                    {turn: 0, distance: 2}
+                ];
+                const step = 0.005 * scaling * speed;
+                let distance = 0;
+                let index = 0;
 
                 scene.onBeforeRenderObservable.add(() => {
-                    console.log(123);
+                    meshes.meshes[0].movePOV(0, 0, step);
+                    distance += step;
+
+                    if (distance >= walk[index].distance) {
+                        meshes.meshes[0].rotate(Axis.Y, walk[index].turn, Space.LOCAL);
+                        index++;
+                        distance = 0;
+
+                        if (index === walk.length) {
+                            index = 0;
+                            meshes.meshes[0].position = new Vector3(2, 0, 0);
+                            meshes.meshes[0].rotationQuaternion = rotation.clone();
+                        }
+                    }
                 });
             });
 
