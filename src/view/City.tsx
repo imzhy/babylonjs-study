@@ -7,7 +7,7 @@ import {Scene} from "@babylonjs/core/scene";
 import {HemisphericLight} from "@babylonjs/core/Lights/hemisphericLight";
 import {Axis, Color3, Quaternion, Space, Vector3, Vector4} from "@babylonjs/core/Maths/math";
 import {CreateBox} from "@babylonjs/core/Meshes/Builders/boxBuilder";
-import {CreateGround} from "@babylonjs/core/Meshes/Builders/groundBuilder";
+import {CreateGround, CreateGroundFromHeightMap} from "@babylonjs/core/Meshes/Builders/groundBuilder";
 import {CreateSphere} from "@babylonjs/core/Meshes/Builders/sphereBuilder";
 import {CreateCylinder} from "@babylonjs/core/Meshes/Builders/cylinderBuilder";
 import {ExtrudePolygon} from "@babylonjs/core/Meshes/Builders/polygonBuilder";
@@ -35,12 +35,15 @@ export default defineComponent({
         const himProgress = ref("0");
 
         const createGround = (scene: Scene) => {
-            const ground = CreateGround("ground", {
-                width: 50,
-                height: 25
+            const ground = CreateGroundFromHeightMap("ground", "/src/assets/heightmap.png", {
+                width: 150,
+                height: 150,
+                subdivisions: 30,
+                minHeight: 0,
+                maxHeight: 10
             }, scene);
             const groundMaterial = new StandardMaterial("groundMaterial", scene);
-            groundMaterial.diffuseTexture = new Texture("https://proxyimg.sucai999.com/preimg/E625C8/700/E625C8/145/92a7119523bfdcaa24d89d2ed89c6e89.jpg?x-oss-process=format,webp", scene);
+            groundMaterial.diffuseTexture = new Texture("https://assets.babylonjs.com/environments/valleygrass.png", scene);
             ground.material = groundMaterial;
         }
 
@@ -117,13 +120,16 @@ export default defineComponent({
             const carKeys = [
                 {
                     frame: 0,
-                    value: -6
-                }, {
-                    frame: 90,
                     value: 0
+                }, {
+                    frame: 60,
+                    value: 6
                 }, {
                     frame: 180,
                     value: -6
+                }, {
+                    frame: 240,
+                    value: 0
                 }
             ];
             carAnimation.setKeys(carKeys);
@@ -207,6 +213,16 @@ export default defineComponent({
 
             createGround(scene);
 
+            // 碰撞检测框
+            const intersectBoxMat = new StandardMaterial("intersectBoxMat");
+            intersectBoxMat.wireframe = true;
+            let intersectBox = CreateBox("intersectBox", {
+                depth: 3
+            });
+            intersectBox.position = new Vector3(3, 0.5, 0);
+            intersectBox.material = intersectBoxMat;
+
+            // 一批房子
             let smallHouse = await createHouse(scene, 1);
             smallHouse.rotation.y = Math.PI / 4;
             let bigHouse = await createHouse(scene, 2);
@@ -254,14 +270,14 @@ export default defineComponent({
                 house.rotation.y = _cf[3];
             }
 
+            // 小车
             let car = await createCar(scene);
             car.position.x = 3;
             car.position.y = 0.075;
-            car.position.z = -6;
             car.rotation.y = -Math.PI / 2;
             car.rotation.x = -Math.PI / 2;
 
-            scene.beginAnimation(car, 0, 180, true);
+            scene.beginAnimation(car, 0, 240, true);
             let wheels = car.getChildMeshes();
             for (let wheel of wheels) {
                 scene.beginAnimation(wheel, 0, 60, true);
@@ -270,6 +286,7 @@ export default defineComponent({
             // camera.setTarget(car.position);
 
 
+            // 加载草
             SceneLoader.ImportMeshAsync("", "src/assets/jue/", "jue.glb", scene, (progress: any) => {
                 jueProgress.value = (progress.loaded / progress.total * 100).toFixed(2);
             }).then((jueMeshes: any) => {
@@ -277,36 +294,33 @@ export default defineComponent({
                 jueMeshes.meshes[0].position = new Vector3(-1.8, 0, -1.8);
             });
 
+            // 加载人物
             SceneLoader.ImportMeshAsync("", "src/assets/Duty/", "dude.babylon", scene, (progress: any) => {
                 himProgress.value = (progress.loaded / progress.total * 100).toFixed(2);
             }).then((meshes: any) => {
-                let scaling = 3;
-                let speed = 1;
+                let scaling = 1;
+                let speed = 1.5;
 
                 meshes.meshes[0].scaling = new Vector3(0.01 * scaling, 0.01 * scaling, 0.01 * scaling);
-                meshes.meshes[0].position = new Vector3(2, 0, 0);
+                meshes.meshes[0].position = new Vector3(1.5, 0, 0);
 
-                meshes.meshes[0].rotate(Axis.Y, 0, Space.LOCAL);
+                meshes.meshes[0].rotate(Axis.Y, -Math.PI / 2, Space.LOCAL);
                 let rotation = meshes.meshes[0].rotationQuaternion.clone();
 
                 scene.beginAnimation(meshes.skeletons[0], 0, 100, true, speed);
 
                 const walk = [
-                    {turn: -Math.PI / 2, distance: 6},
-                    {turn: -Math.PI / 2, distance: 2},
-                    {turn: Math.PI / 2, distance: 8},
-                    {turn: -Math.PI / 2, distance: 8},
-                    {turn: -Math.PI / 2, distance: 2},
-                    {turn: -Math.PI / 2, distance: 18},
-                    {turn: -Math.PI / 2, distance: 2},
-                    {turn: Math.PI / 2, distance: 8},
-                    {turn: 0, distance: 2}
+                    {turn: -Math.PI, distance: 3},
+                    {turn: -Math.PI, distance: 3},
                 ];
                 const step = 0.005 * scaling * speed;
                 let distance = 0;
                 let index = 0;
 
                 scene.onBeforeRenderObservable.add(() => {
+                    if (!meshes.meshes[0].intersectsMesh(intersectBox) && car.intersectsMesh(intersectBox)) {
+                        return;
+                    }
                     meshes.meshes[0].movePOV(0, 0, step);
                     distance += step;
 
@@ -317,7 +331,7 @@ export default defineComponent({
 
                         if (index === walk.length) {
                             index = 0;
-                            meshes.meshes[0].position = new Vector3(2, 0, 0);
+                            meshes.meshes[0].position = new Vector3(1.5, 0, 0);
                             meshes.meshes[0].rotationQuaternion = rotation.clone();
                         }
                     }
