@@ -26,6 +26,8 @@ import "@babylonjs/core/Loading/Plugins/babylonFileLoader";
 // import "@babylonjs/inspector";
 // import "@babylonjs/core/Collisions/collisionCoordinator";
 import "@babylonjs/core/Animations/animatable";
+import "@babylonjs/core/Materials/Textures/Loaders/ddsTextureLoader";
+import "@babylonjs/core/Helpers/sceneHelpers";
 
 export default defineComponent({
     setup() {
@@ -187,6 +189,7 @@ export default defineComponent({
             const camera = new ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 4, 15, new Vector3(0, 0, 0), scene);
             camera.wheelDeltaPercentage = 0.01;
             camera.attachControl(canvas, true);
+            // camera.upperBetaLimit = Math.PI / 2.2;
 
             // 灯光
             const lightPosition = new Vector3(1, 5, 1);
@@ -199,17 +202,26 @@ export default defineComponent({
             sphere.position = lightPosition;
 
             // 天空盒
-            // const skybox = CreateBox("skybox", {
-            //     size: 500
-            // }, scene);
-            // // skybox.position.y = 250;
-            // const skyboxMaterial = new StandardMaterial("skyboxMaterial", scene);
-            // skyboxMaterial.backFaceCulling = false;
-            // skyboxMaterial.disableLighting = true;
-            // skyboxMaterial.reflectionTexture = new CubeTexture("src/assets/skybox/skybox", scene);
-            // skyboxMaterial.reflectionTexture.coordinatesMode = Texture.SKYBOX_MODE;
-            // skybox.material = skyboxMaterial;
-            // skybox.infiniteDistance = true;
+
+            let skyTexture;
+            if (true) {
+                skyTexture = new CubeTexture("/src/assets/skybox/skybox", scene);
+                const skybox = CreateBox("skybox", {
+                    size: 500
+                }, scene);
+                // skybox.position.y = 250;
+                const skyboxMaterial = new StandardMaterial("skyboxMaterial", scene);
+                skyboxMaterial.backFaceCulling = false;
+                skyboxMaterial.disableLighting = true;
+                skyboxMaterial.reflectionTexture = skyTexture;
+                skyboxMaterial.reflectionTexture.coordinatesMode = Texture.SKYBOX_MODE;
+                skybox.material = skyboxMaterial;
+                skybox.infiniteDistance = true;
+            } else {
+                skyTexture = new CubeTexture("/src/assets/SpecularHDR.dds", scene);
+                scene.createDefaultSkybox(skyTexture, true, 10000);
+            }
+
 
             createGround(scene);
 
