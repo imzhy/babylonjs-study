@@ -13,10 +13,14 @@ import {CreateCylinder} from "@babylonjs/core/Meshes/Builders/cylinderBuilder";
 import {ExtrudePolygon} from "@babylonjs/core/Meshes/Builders/polygonBuilder";
 import {SceneLoader} from "@babylonjs/core/Loading/sceneLoader";
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
+import {BackgroundMaterial} from "@babylonjs/core/Materials/Background/backgroundMaterial";
+import {PBRMaterial} from "@babylonjs/core/Materials/PBR/pbrMaterial";
 import {Texture} from "@babylonjs/core/Materials/Textures/texture";
 import {CubeTexture} from "@babylonjs/core/Materials/Textures/cubeTexture";
 import {Mesh} from "@babylonjs/core/Meshes/mesh";
 import {Animation} from "@babylonjs/core/Animations/animation";
+import {SpriteManager} from "@babylonjs/core/Sprites/spriteManager";
+import {Sprite} from "@babylonjs/core/Sprites/sprite";
 
 import "@babylonjs/loaders/glTF";
 import "@babylonjs/loaders/OBJ/objFileLoader";
@@ -186,28 +190,45 @@ export default defineComponent({
 
             // 相机
             // const camera = new ArcRotateCamera("camera", 0, Math.PI / 2.5, 20, new Vector3(0, 0, 0), scene);
-            const camera = new ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 4, 15, new Vector3(0, 0, 0), scene);
+            const camera = new ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 4, 35, new Vector3(0, 0, 0), scene);
             camera.wheelDeltaPercentage = 0.01;
             camera.attachControl(canvas, true);
-            // camera.upperBetaLimit = Math.PI / 2.2;
+            camera.upperBetaLimit = Math.PI / 2.2;
 
             // 灯光
-            const lightPosition = new Vector3(1, 5, 1);
+            const lightPosition = new Vector3(1, 15, 1);
             const light = new HemisphericLight("light", lightPosition, scene);
             light.intensity = 0.7;
-            const sphere = CreateSphere("light", {
+            const lightSphere = CreateSphere("light", {
                 segments: 64,
                 diameter: 0.5
             }, scene);
-            sphere.position = lightPosition;
+            lightSphere.position = lightPosition;
+
+            // 球体
+            const sphere = CreateSphere("light", {
+                segments: 64,
+                diameter: 5
+            }, scene);
+            sphere.position = new Vector3(1, 5, 1);
+            const sphereMat = new PBRMaterial("sphereMat", scene);
+            sphere.material = sphereMat;
+            sphereMat.albedoColor = new Color3(1, 1, 1);
+            sphereMat.metallic = 1;
+            sphereMat.roughness = 0;
+            sphereMat.reflectionTexture = CubeTexture.CreateFromPrefilteredData("https://playground.babylonjs.com/textures/environment.env", scene);
 
             // 天空盒
-
             let skyTexture;
             if (true) {
                 skyTexture = new CubeTexture("/src/assets/skybox/skybox", scene);
+            } else {
+                skyTexture = new CubeTexture("/src/assets/SpecularHDR.dds", scene);
+            }
+            if (true) {
                 const skybox = CreateBox("skybox", {
-                    size: 500
+                    size: 5000,
+                    // sideOrientation: Mesh.BACKSIDE
                 }, scene);
                 // skybox.position.y = 250;
                 const skyboxMaterial = new StandardMaterial("skyboxMaterial", scene);
@@ -218,12 +239,38 @@ export default defineComponent({
                 skybox.material = skyboxMaterial;
                 skybox.infiniteDistance = true;
             } else {
-                skyTexture = new CubeTexture("/src/assets/SpecularHDR.dds", scene);
                 scene.createDefaultSkybox(skyTexture, true, 10000);
             }
 
 
+            // 地面
             createGround(scene);
+
+            // 一批树（精灵图）
+            let treeNumber = 6000;
+            let spriteManage = new SpriteManager("spriteManage", "/src/assets/palmtree.png", treeNumber, {
+                width: 512,
+                height: 1024
+            }, scene);
+            for (let i = 0; i < treeNumber; i++) {
+                let x = Math.random() * 50 - 25, y = Math.random() * 50 - 25;
+                if (x > -50 && x < 19 && y > -8 && y < 8) {
+                    continue;
+                }
+                let tree = new Sprite("tree", spriteManage);
+                tree.position.x = x;
+                tree.position.z = y;
+                tree.position.y = 0.5;
+            }
+
+            // 一个 ufo
+            let ufoManage = new SpriteManager("ufoManage", "/src/assets/ufo.png", 1, {
+                width: 128,
+                height: 76
+            }, scene);
+            let ufo = new Sprite("ufo", ufoManage);
+            ufo.position.y = 10;
+            ufo.playAnimation(0, 16, true, 300);
 
             // 碰撞检测框
             const intersectBoxMat = new StandardMaterial("intersectBoxMat");
