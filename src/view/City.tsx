@@ -23,6 +23,7 @@ import {Animation} from "@babylonjs/core/Animations/animation";
 import {SpriteManager} from "@babylonjs/core/Sprites/spriteManager";
 import {Sprite} from "@babylonjs/core/Sprites/sprite";
 import {ParticleSystem} from "@babylonjs/core/Particles/particleSystem";
+import {PointerEventTypes} from "@babylonjs/core/Events/pointerEvents";
 
 import "@babylonjs/loaders/glTF";
 import "@babylonjs/loaders/OBJ/objFileLoader";
@@ -242,6 +243,19 @@ export default defineComponent({
             particleSystem.gravity = new Vector3(0, -8, 0);
 
             particleSystem.start();
+
+            let fountainSwitch = true;
+            let changFountain = (pointInfo: any) => {
+                if (pointInfo.type === PointerEventTypes.POINTERTAP && pointInfo.pickInfo.hit && pointInfo.pickInfo.pickedMesh === fountain) {
+                    if (fountainSwitch) {
+                        particleSystem.stop();
+                    } else {
+                        particleSystem.start();
+                    }
+                    fountainSwitch = !fountainSwitch;
+                }
+            }
+            scene.onPointerObservable.add(changFountain);
 
             return fountain;
         }
