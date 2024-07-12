@@ -5,9 +5,10 @@ import {ArcRotateCamera} from "@babylonjs/core/Cameras/arcRotateCamera";
 import {Engine} from "@babylonjs/core/Engines/engine";
 import {Scene} from "@babylonjs/core/scene";
 import {HemisphericLight} from "@babylonjs/core/Lights/hemisphericLight";
-import {Axis, Color3, Quaternion, Space, Vector3, Vector4} from "@babylonjs/core/Maths/math";
+import {Axis, Color3, Color4, Quaternion, Space, Vector3, Vector4} from "@babylonjs/core/Maths/math";
 import {CreateBox} from "@babylonjs/core/Meshes/Builders/boxBuilder";
 import {CreateGround, CreateGroundFromHeightMap} from "@babylonjs/core/Meshes/Builders/groundBuilder";
+import {CreateLathe} from "@babylonjs/core/Meshes/Builders/latheBuilder";
 import {CreateSphere} from "@babylonjs/core/Meshes/Builders/sphereBuilder";
 import {CreateCylinder} from "@babylonjs/core/Meshes/Builders/cylinderBuilder";
 import {ExtrudePolygon} from "@babylonjs/core/Meshes/Builders/polygonBuilder";
@@ -21,6 +22,7 @@ import {Mesh} from "@babylonjs/core/Meshes/mesh";
 import {Animation} from "@babylonjs/core/Animations/animation";
 import {SpriteManager} from "@babylonjs/core/Sprites/spriteManager";
 import {Sprite} from "@babylonjs/core/Sprites/sprite";
+import {ParticleSystem} from "@babylonjs/core/Particles/particleSystem";
 
 import "@babylonjs/loaders/glTF";
 import "@babylonjs/loaders/OBJ/objFileLoader";
@@ -184,6 +186,66 @@ export default defineComponent({
             return car;
         }
 
+        const createFountain = async (scene: Scene): Promise<Mesh> => {
+            const path = [
+                new Vector3(0, 0, 0),
+                new Vector3(10, 0, 0),
+                new Vector3(10, 4, 0),
+                new Vector3(8, 4, 0),
+                new Vector3(8, 2, 0),
+                new Vector3(2, 2, 0),
+                new Vector3(2, 15, 0),
+                new Vector3(4, 17, 0),
+                new Vector3(3.8, 17, 0),
+                new Vector3(1.8, 15, 0),
+                new Vector3(1.8, 2, 0),
+                new Vector3(0, 2, 0)
+            ];
+
+            let fountain = CreateLathe("fountain", {
+                shape: path,
+                tessellation: 256
+            }, scene);
+
+            let fountainParticlePositionBox = CreateBox("fountainParticlePositionBox", {
+                size: 10
+            });
+            fountainParticlePositionBox.parent = fountain;
+            fountainParticlePositionBox.isVisible = false;
+            fountainParticlePositionBox.position.y = 13;
+
+            let particleSystem = new ParticleSystem("fountainParticle", 5000, scene);
+
+            particleSystem.particleTexture = new Texture("/src/assets/flare.png", scene);
+
+            particleSystem.emitter = fountainParticlePositionBox;
+            particleSystem.minEmitBox = new Vector3(-0.3, 0, -0.3);
+            particleSystem.maxEmitBox = new Vector3(0.3, 0, 0.3);
+            particleSystem.direction1 = new Vector3(2, 8, 2);
+            particleSystem.direction2 = new Vector3(-2, 8, -2);
+            particleSystem.minEmitPower = 4;
+            particleSystem.maxEmitPower = 7;
+            particleSystem.minLifeTime = 1;
+            particleSystem.maxLifeTime = 1.5;
+            //
+            particleSystem.color1 = new Color4(0.7, 0.8, 1.0, 1.0);
+            particleSystem.color2 = new Color4(0.2, 0.5, 1.0, 1.0);
+            particleSystem.blendMode = ParticleSystem.BLENDMODE_ONEONE;
+            //
+            particleSystem.minSize = 0.02 * 1;
+            particleSystem.maxSize = 0.06 * 1;
+            //
+            particleSystem.emitRate = 2000;
+            //
+            particleSystem.updateSpeed = 0.01;
+            //
+            particleSystem.gravity = new Vector3(0, -8, 0);
+
+            particleSystem.start();
+
+            return fountain;
+        }
+
         const renderScene = async (canvas: HTMLCanvasElement, engine: Engine): Promise<Scene> => {
             const scene = new Scene(engine);
             // await scene.debugLayer.show();
@@ -245,6 +307,12 @@ export default defineComponent({
 
             // 地面
             createGround(scene);
+
+            // 喷泉
+            let fountain = await createFountain(scene);
+            fountain.scaling = new Vector3(0.1, 0.1, 0.1);
+            fountain.position.x = 9;
+            fountain.position.z = -3;
 
             // 一批树（精灵图）
             let treeNumber = 6000;
