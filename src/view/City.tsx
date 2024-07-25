@@ -5,6 +5,7 @@ import {ArcRotateCamera} from "@babylonjs/core/Cameras/arcRotateCamera";
 import {Engine} from "@babylonjs/core/Engines/engine";
 import {Scene} from "@babylonjs/core/scene";
 import {HemisphericLight} from "@babylonjs/core/Lights/hemisphericLight";
+import {SpotLight} from "@babylonjs/core/Lights/spotLight";
 import {Axis, Color3, Color4, Quaternion, Space, Vector3, Vector4} from "@babylonjs/core/Maths/math";
 import {CreateBox} from "@babylonjs/core/Meshes/Builders/boxBuilder";
 import {CreateGround, CreateGroundFromHeightMap} from "@babylonjs/core/Meshes/Builders/groundBuilder";
@@ -12,6 +13,7 @@ import {CreateLathe} from "@babylonjs/core/Meshes/Builders/latheBuilder";
 import {CreateSphere} from "@babylonjs/core/Meshes/Builders/sphereBuilder";
 import {CreateCylinder} from "@babylonjs/core/Meshes/Builders/cylinderBuilder";
 import {ExtrudePolygon} from "@babylonjs/core/Meshes/Builders/polygonBuilder";
+import {ExtrudeShape} from "@babylonjs/core/Meshes/Builders/shapeBuilder";
 import {SceneLoader} from "@babylonjs/core/Loading/sceneLoader";
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
 import {BackgroundMaterial} from "@babylonjs/core/Materials/Background/backgroundMaterial";
@@ -23,7 +25,7 @@ import {Animation} from "@babylonjs/core/Animations/animation";
 import {SpriteManager} from "@babylonjs/core/Sprites/spriteManager";
 import {Sprite} from "@babylonjs/core/Sprites/sprite";
 import {ParticleSystem} from "@babylonjs/core/Particles/particleSystem";
-import {PointerEventTypes} from "@babylonjs/core/Events/pointerEvents";
+import {PointerEventTypes, PointerInfo} from "@babylonjs/core/Events/pointerEvents";
 
 import "@babylonjs/loaders/glTF";
 import "@babylonjs/loaders/OBJ/objFileLoader";
@@ -43,7 +45,7 @@ export default defineComponent({
         const shuProgress = ref("0");
         const himProgress = ref("0");
 
-        const createGround = (scene: Scene) => {
+        const createGround = async (scene: Scene): Promise<Mesh> => {
             const ground = CreateGroundFromHeightMap("ground", "/src/assets/heightmap.png", {
                 width: 150,
                 height: 150,
@@ -53,7 +55,9 @@ export default defineComponent({
             }, scene);
             const groundMaterial = new StandardMaterial("groundMaterial", scene);
             groundMaterial.diffuseTexture = new Texture("/src/assets/valleygrass.png", scene);
+            groundMaterial.maxSimultaneousLights = 10;
             ground.material = groundMaterial;
+            return ground;
         }
 
         const createHouse = async (scene: Scene, width: number): Promise<Mesh> => {
@@ -245,8 +249,8 @@ export default defineComponent({
             particleSystem.start();
 
             let fountainSwitch = true;
-            let changFountain = (pointInfo: any) => {
-                if (pointInfo.type === PointerEventTypes.POINTERTAP && pointInfo.pickInfo.hit && pointInfo.pickInfo.pickedMesh === fountain) {
+            let changFountain = (pointInfo: PointerInfo) => {
+                if (pointInfo.type === PointerEventTypes.POINTERTAP && pointInfo.pickInfo!.hit && pointInfo.pickInfo!.pickedMesh === fountain) {
                     if (fountainSwitch) {
                         particleSystem.stop();
                     } else {
@@ -258,6 +262,49 @@ export default defineComponent({
             scene.onPointerObservable.add(changFountain);
 
             return fountain;
+        }
+
+        const createLamppost = async (scene: Scene): Promise<Mesh> => {
+            let lampShape: Vector3[] = [];
+            for (let i = 0; i < 36; i++) {
+                lampShape.push(new Vector3(Math.cos(i * Math.PI / 18) * .3, Math.sin(i * Math.PI / 18) * .3, 0));
+            }
+            lampShape.push(lampShape[0]);
+
+            let lampPath: Vector3[] = [
+                new Vector3(0, 0, 0),
+                new Vector3(0, 10, 0)
+            ];
+            for (let i = 0; i < 90; i++) {
+                lampPath.push(
+                    new Vector3(
+                        1 + Math.cos(Math.PI + i * Math.PI / 180),
+                        10 + Math.sin(i * Math.PI / 180),
+                        0
+                    )
+                );
+            }
+            lampPath.push(new Vector3(3, 11, 0));
+
+            const lamppost = ExtrudeShape("lamppost", {
+                cap: Mesh.CAP_END,
+                shape: lampShape,
+                path: lampPath
+            }, scene);
+            const lightSphere = CreateSphere("light", {
+                segments: 64,
+                diameter: 0.5
+            }, scene);
+            let streetLight = new SpotLight("streetLight", Vector3.Zero(), new Vector3(0, -1, 0), Math.PI / 1.5, 8, scene);
+            lightSphere.parent = lamppost;
+            streetLight.parent = lightSphere;
+
+            let lightSphereMat = new StandardMaterial("lightSphereMat", scene);
+            lightSphereMat.emissiveColor = new Color3(0.93, 0.91, 0.07);
+            lightSphere.material = lightSphereMat;
+            lightSphere.position = new Vector3(2.8, 10.5, 0);
+
+            return lamppost;
         }
 
         const renderScene = async (canvas: HTMLCanvasElement, engine: Engine): Promise<Scene> => {
@@ -272,21 +319,15 @@ export default defineComponent({
             camera.upperBetaLimit = Math.PI / 2.2;
 
             // 灯光
-            const lightPosition = new Vector3(1, 15, 1);
-            const light = new HemisphericLight("light", lightPosition, scene);
-            light.intensity = 0.7;
-            const lightSphere = CreateSphere("light", {
-                segments: 64,
-                diameter: 0.5
-            }, scene);
-            lightSphere.position = lightPosition;
+            const light = new HemisphericLight("light", new Vector3(1, 15, 1), scene);
+            light.intensity = 0.1;
 
             // 球体
             const sphere = CreateSphere("light", {
                 segments: 64,
                 diameter: 5
             }, scene);
-            sphere.position = new Vector3(1, 5, 1);
+            sphere.position = new Vector3(1, 25, 1);
             const sphereMat = new PBRMaterial("sphereMat", scene);
             sphere.material = sphereMat;
             sphereMat.albedoColor = new Color3(1, 1, 1);
@@ -320,7 +361,28 @@ export default defineComponent({
 
 
             // 地面
-            createGround(scene);
+            await createGround(scene);
+
+            // 路灯（SpotLight）
+            let lamppost1 = await createLamppost(scene);
+            lamppost1.scaling = new Vector3(0.3, 0.3, 0.3);
+            lamppost1.position.x = -7;
+            lamppost1.position.z = 1;
+            lamppost1.rotate(new Vector3(0, 1, 0), -Math.PI / 2, Space.LOCAL);
+
+            let lamppost2 = lamppost1.clone("lamppost2");
+            lamppost2.position.x = 0;
+            lamppost2.position.z = 5;
+            lamppost2.rotate(new Vector3(0, 1, 0), Math.PI, Space.LOCAL);
+
+            let lamppost3 = lamppost1.clone("lamppost3");
+            lamppost3.position.x = 7;
+            lamppost3.position.z = 1;
+
+            let lamppost4 = lamppost1.clone("lamppost4");
+            lamppost4.position.x = 14;
+            lamppost4.position.z = 5;
+            lamppost4.rotate(new Vector3(0, 1, 0), Math.PI, Space.LOCAL);
 
             // 喷泉
             let fountain = await createFountain(scene);
