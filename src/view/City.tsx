@@ -4,8 +4,11 @@ import "./City.less";
 import {ArcRotateCamera} from "@babylonjs/core/Cameras/arcRotateCamera";
 import {Engine} from "@babylonjs/core/Engines/engine";
 import {Scene} from "@babylonjs/core/scene";
+
 import {HemisphericLight} from "@babylonjs/core/Lights/hemisphericLight";
 import {SpotLight} from "@babylonjs/core/Lights/spotLight";
+import {DirectionalLight} from "@babylonjs/core/Lights/directionalLight";
+
 import {Axis, Color3, Color4, Quaternion, Space, Vector3, Vector4} from "@babylonjs/core/Maths/math";
 import {CreateBox} from "@babylonjs/core/Meshes/Builders/boxBuilder";
 import {CreateGround, CreateGroundFromHeightMap} from "@babylonjs/core/Meshes/Builders/groundBuilder";
@@ -26,6 +29,13 @@ import {SpriteManager} from "@babylonjs/core/Sprites/spriteManager";
 import {Sprite} from "@babylonjs/core/Sprites/sprite";
 import {ParticleSystem} from "@babylonjs/core/Particles/particleSystem";
 import {PointerEventTypes, PointerInfo} from "@babylonjs/core/Events/pointerEvents";
+import {ShadowGenerator} from "@babylonjs/core/Lights/Shadows/shadowGenerator";
+
+import {AdvancedDynamicTexture} from "@babylonjs/gui/2D/advancedDynamicTexture";
+import {StackPanel} from "@babylonjs/gui/2D/controls/stackPanel";
+import {Control} from "@babylonjs/gui/2D/controls/control";
+import {TextBlock} from "@babylonjs/gui/2D/controls/textBlock";
+import {Slider} from "@babylonjs/gui/2D/controls/sliders/slider";
 
 import "@babylonjs/loaders/glTF";
 import "@babylonjs/loaders/OBJ/objFileLoader";
@@ -37,6 +47,7 @@ import "@babylonjs/core/Loading/Plugins/babylonFileLoader";
 import "@babylonjs/core/Animations/animatable";
 import "@babylonjs/core/Materials/Textures/Loaders/ddsTextureLoader";
 import "@babylonjs/core/Helpers/sceneHelpers";
+import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
 
 export default defineComponent({
     setup() {
@@ -319,8 +330,14 @@ export default defineComponent({
             camera.upperBetaLimit = Math.PI / 2.2;
 
             // 灯光
-            const light = new HemisphericLight("light", new Vector3(1, 15, 1), scene);
-            light.intensity = 0.1;
+            const ambientLight = new HemisphericLight("ambientLight", new Vector3(1, 15, 1), scene);
+            ambientLight.intensity = .5;
+            const light = new DirectionalLight("light", new Vector3(-1, -1, 1), scene);
+            light.position = new Vector3(50, 50, -50);
+            light.intensity = 1;
+
+            // 阴影生成器
+            const shadow = new ShadowGenerator(1024, light);
 
             // 球体
             const sphere = CreateSphere("light", {
@@ -361,7 +378,8 @@ export default defineComponent({
 
 
             // 地面
-            await createGround(scene);
+            let ground = await createGround(scene);
+            ground.receiveShadows = true;
 
             // 路灯（SpotLight）
             let lamppost1 = await createLamppost(scene);
@@ -384,11 +402,58 @@ export default defineComponent({
             lamppost4.position.z = 5;
             lamppost4.rotate(new Vector3(0, 1, 0), Math.PI, Space.LOCAL);
 
+            shadow.addShadowCaster(lamppost1);
+            shadow.addShadowCaster(lamppost2);
+            shadow.addShadowCaster(lamppost3);
+            shadow.addShadowCaster(lamppost4);
+
+            const autoLight = () => {
+                ambientLight.intensity = light.intensity / 2;
+                (lamppost1.getChildMeshes()[0].getChildren()[0] as SpotLight).intensity = light.intensity < 0.4 ? 1 : 0;
+                (lamppost2.getChildMeshes()[0].getChildren()[0] as SpotLight).intensity = light.intensity < 0.4 ? 1 : 0;
+                (lamppost3.getChildMeshes()[0].getChildren()[0] as SpotLight).intensity = light.intensity < 0.4 ? 1 : 0;
+                (lamppost4.getChildMeshes()[0].getChildren()[0] as SpotLight).intensity = light.intensity < 0.4 ? 1 : 0;
+            }
+            autoLight();
+
+            // 灯光控制面板
+            let adt = AdvancedDynamicTexture.CreateFullscreenUI("lightTextureUI", true, scene);
+
+            let panel = new StackPanel("lightPanel");
+            panel.width = "220px";
+            // panel.top = "-50px";
+            panel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+            panel.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+            panel.background = "#000";
+            adt.addControl(panel);
+
+            let title = new TextBlock("lightTitle", "调整环境光强度");
+            title.height = "30px";
+            title.color = "#fff";
+            panel.addControl(title);
+
+            let slider = new Slider("lightSlider");
+            slider.minimum = 0;
+            slider.maximum = 1;
+            slider.color = "#aaaaaa";
+            slider.borderColor = "#000";
+            slider.background = "#fff";
+            slider.value = light.intensity;
+            slider.height = "20px";
+            slider.width = "200px";
+            panel.addControl(slider);
+
+            slider.onValueChangedObservable.add((value: number) => {
+                light.intensity = value;
+                autoLight();
+            });
+
             // 喷泉
             let fountain = await createFountain(scene);
             fountain.scaling = new Vector3(0.1, 0.1, 0.1);
             fountain.position.x = 9;
             fountain.position.z = -3;
+            shadow.addShadowCaster(fountain);
 
             // 一批树（精灵图）
             let treeNumber = 6000;
@@ -431,6 +496,11 @@ export default defineComponent({
             let bigHouse = await createHouse(scene, 2);
             bigHouse.position.x = -2;
 
+            smallHouse.receiveShadows = true;
+            shadow.addShadowCaster(smallHouse);
+            bigHouse.receiveShadows = true;
+            shadow.addShadowCaster(bigHouse);
+
             let copyConf = [
                 [1, -4, 0.1, 0],
                 [1, -6, -0.3, 0],
@@ -468,6 +538,9 @@ export default defineComponent({
                     ? smallHouse.createInstance("small_house_" + i)
                     : bigHouse.createInstance("big_house_" + i);
 
+                house.receiveShadows = true;
+                shadow.addShadowCaster(house);
+
                 house.position.x = _cf[1];
                 house.position.z = _cf[2];
                 house.rotation.y = _cf[3];
@@ -479,6 +552,7 @@ export default defineComponent({
             car.position.y = 0.075;
             car.rotation.y = -Math.PI / 2;
             car.rotation.x = -Math.PI / 2;
+            shadow.addShadowCaster(car);
 
             scene.beginAnimation(car, 0, 240, true);
             let wheels = car.getChildMeshes();
@@ -503,6 +577,8 @@ export default defineComponent({
             }).then((meshes: any) => {
                 let scaling = 1;
                 let speed = 1.5;
+
+                shadow.addShadowCaster(meshes.meshes[0], true);
 
                 meshes.meshes[0].scaling = new Vector3(0.01 * scaling, 0.01 * scaling, 0.01 * scaling);
                 meshes.meshes[0].position = new Vector3(1.5, 0, 0);
