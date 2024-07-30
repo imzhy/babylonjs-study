@@ -2,7 +2,10 @@ import earCut from "earcut";
 import {defineComponent, h, ref} from "vue";
 import "./City.less";
 import {ArcRotateCamera} from "@babylonjs/core/Cameras/arcRotateCamera";
+import {FollowCamera} from "@babylonjs/core/Cameras/followCamera";
 import {Engine} from "@babylonjs/core/Engines/engine";
+import {WebGPUEngine} from "@babylonjs/core/Engines/webgpuEngine";
+import {AbstractEngine} from "@babylonjs/core/Engines/abstractEngine";
 import {Scene} from "@babylonjs/core/scene";
 
 import {HemisphericLight} from "@babylonjs/core/Lights/hemisphericLight";
@@ -48,6 +51,11 @@ import "@babylonjs/core/Animations/animatable";
 import "@babylonjs/core/Materials/Textures/Loaders/ddsTextureLoader";
 import "@babylonjs/core/Helpers/sceneHelpers";
 import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
+import "@babylonjs/core/Engines/WebGPU/Extensions/engine.renderTarget";
+import "@babylonjs/core/Engines/WebGPU/Extensions/engine.cubeTexture";
+import "@babylonjs/core/Engines/WebGPU/Extensions/engine.dynamicTexture";
+import "@babylonjs/core/Engines/WebGPU/Extensions/engine.alpha";
+import "@babylonjs/core/Engines/WebGPU/Extensions/engine.rawTexture";
 
 export default defineComponent({
     setup() {
@@ -139,20 +147,20 @@ export default defineComponent({
             carMat.diffuseTexture = new Texture("/src/assets/car.png");
             car.material = carMat;
 
-            const carAnimation = new Animation("carAnimation", "position.z", 60,
+            const carAnimation = new Animation("carAnimation", "position.z", 6,
                 Animation.ANIMATIONTYPE_FLOAT, Animation.ANIMATIONLOOPMODE_CYCLE);
             const carKeys = [
                 {
                     frame: 0,
                     value: 0
                 }, {
-                    frame: 60,
+                    frame: 6,
                     value: 6
                 }, {
-                    frame: 180,
-                    value: -6
+                    frame: 18,
+                    value: -16
                 }, {
-                    frame: 240,
+                    frame: 24,
                     value: 0
                 }
             ];
@@ -318,13 +326,20 @@ export default defineComponent({
             return lamppost;
         }
 
-        const renderScene = async (canvas: HTMLCanvasElement, engine: Engine): Promise<Scene> => {
+        const renderScene = async (canvas: HTMLCanvasElement, engine: AbstractEngine): Promise<Scene> => {
             const scene = new Scene(engine);
             // await scene.debugLayer.show();
 
             // 相机
-            // const camera = new ArcRotateCamera("camera", 0, Math.PI / 2.5, 20, new Vector3(0, 0, 0), scene);
-            const camera = new ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 4, 35, new Vector3(0, 0, 0), scene);
+            // const camera = new FollowCamera("camera", new Vector3(0, 0, 0), scene);
+            // camera.heightOffset = 8;
+            // camera.radius = 1;
+            // camera.rotationOffset = 0;
+            // camera.cameraAcceleration = 0.0005;
+            // camera.maxCameraSpeed = 10;
+            // camera.attachControl(canvas, true);
+
+            const camera = new ArcRotateCamera("camera", Math.PI / 2, Math.PI / 6, 15, new Vector3(0, 0, 0), scene);
             camera.wheelDeltaPercentage = 0.01;
             camera.attachControl(canvas, true);
             camera.upperBetaLimit = Math.PI / 2.2;
@@ -554,7 +569,7 @@ export default defineComponent({
             car.rotation.x = -Math.PI / 2;
             shadow.addShadowCaster(car);
 
-            scene.beginAnimation(car, 0, 240, true);
+            scene.beginAnimation(car, 0, 24, true);
             let wheels = car.getChildMeshes();
             for (let wheel of wheels) {
                 scene.beginAnimation(wheel, 0, 60, true);
@@ -580,6 +595,8 @@ export default defineComponent({
 
                 shadow.addShadowCaster(meshes.meshes[0], true);
 
+                // camera.lockedTarget = meshes.meshes[0];
+
                 meshes.meshes[0].scaling = new Vector3(0.01 * scaling, 0.01 * scaling, 0.01 * scaling);
                 meshes.meshes[0].position = new Vector3(1.5, 0, 0);
 
@@ -598,7 +615,7 @@ export default defineComponent({
 
                 scene.onBeforeRenderObservable.add(() => {
                     if (!meshes.meshes[0].intersectsMesh(intersectBox) && car.intersectsMesh(intersectBox)) {
-                        return;
+                        // return;
                     }
                     meshes.meshes[0].movePOV(0, 0, step);
                     distance += step;
@@ -622,7 +639,17 @@ export default defineComponent({
 
         const init = async () => {
             const canvas = document.getElementById("renderCanvas") as HTMLCanvasElement;
-            const engine = new Engine(canvas);
+            const webGPUSupport = await WebGPUEngine.IsSupportedAsync;
+            let engine: AbstractEngine;
+            if (webGPUSupport) {
+                engine = new WebGPUEngine(canvas, {
+                    antialias: true
+                });
+                await (engine as WebGPUEngine).initAsync();
+            } else {
+                engine = new Engine(canvas, true);
+            }
+            console.log(engine.name, webGPUSupport);
 
             const scene = await renderScene(canvas, engine);
 
